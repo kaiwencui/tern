@@ -1,0 +1,59 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.1"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+tern-types = { path = "crates/tern-types" }
+tern-core = { path = "crates/tern-core" }
+tern-render = { path = "crates/tern-render" }
+tern-layout = { path = "crates/tern-layout" }
+tern-input = { path = "crates/tern-input" }
+tern-config = { path = "crates/tern-config" }
+tern-vt = { path = "crates/tern-vt" }
+
+libc = "0.2"
+
+# The objc2 family is pinned here so every crate links the same versions.
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = "0.3"
+objc2-app-kit = "0.3"
+objc2-metal = "0.3"
+objc2-quartz-core = "0.3"
+objc2-core-foundation = "0.3"
+objc2-core-graphics = "0.3"
+objc2-core-text = "0.3"
+
+# Tests run real byte streams through the terminal, so dependencies are built
+# optimized even in dev.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+# The terminal engine is a member of the workspace, which "*" above does not
+# cover; it is what the tests spend their time in.
+[profile.dev.package.tern-vt]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Release without the slow link, for trying changes.
+[profile.fast]
+inherits = "release"
+lto = false
+codegen-units = 16
+strip = false

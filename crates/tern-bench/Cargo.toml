@@ -1,0 +1,15 @@
+[package]
+name = "tern-bench"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Cross-terminal PTY throughput, rusage_info_v6, and vtebench harness"
+
+[[bin]]
+name = "termbench"
+path = "src/main.rs"
+
+[dependencies]
+libc.workspace = true

@@ -1,0 +1,11 @@
+[package]
+name = "tern-input"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Legacy xterm and Kitty keyboard protocol, mouse, and bracketed-paste encoding"
+
+[dependencies]
+tern-types.workspace = true

@@ -1,0 +1,32 @@
+[package]
+name = "tern-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Native macOS AppKit window, tab, split-pane, and event loop layer for Tern"
+
+[[bin]]
+name = "tern"
+path = "src/main.rs"
+
+[dependencies]
+tern-types.workspace = true
+tern-core.workspace = true
+tern-render.workspace = true
+tern-layout.workspace = true
+tern-input.workspace = true
+tern-config.workspace = true
+objc2.workspace = true
+block2.workspace = true
+objc2-foundation.workspace = true
+objc2-app-kit.workspace = true
+objc2-quartz-core.workspace = true
+objc2-metal.workspace = true
+objc2-core-foundation.workspace = true
+objc2-core-graphics.workspace = true
+libc.workspace = true
+# Already in the build through tern-vt; measures the input
+# method's text as the terminal would.
+unicode-width = "0.2"

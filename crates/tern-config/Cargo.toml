@@ -1,0 +1,11 @@
+[package]
+name = "tern-config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Configuration, Ghostty-compatible theme loader, and keybinding table for Tern"
+
+[dependencies]
+tern-types.workspace = true

@@ -1,0 +1,17 @@
+[package]
+name = "tern-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "macOS PTY session lifecycle and adaptive three-thread I/O pipeline"
+
+[dependencies]
+tern-types.workspace = true
+tern-vt.workspace = true
+# The lock the terminal state is kept behind (src/sync.rs).
+parking_lot = "0.12.0"
+# Finds escapes in output.
+memchr = "2"
+libc.workspace = true

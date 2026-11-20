@@ -1,0 +1,19 @@
+[package]
+name = "tern-render"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Metal and Core Text terminal renderer with shelf-packed glyph atlases"
+
+[dependencies]
+tern-types.workspace = true
+objc2.workspace = true
+block2.workspace = true
+objc2-foundation.workspace = true
+objc2-metal.workspace = true
+objc2-quartz-core = { workspace = true, features = ["objc2-metal", "objc2-core-graphics", "objc2-core-foundation"] }
+objc2-core-foundation.workspace = true
+objc2-core-graphics.workspace = true
+objc2-core-text = { workspace = true, features = ["objc2-core-graphics"] }

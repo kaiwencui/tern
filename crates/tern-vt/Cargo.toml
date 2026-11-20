@@ -1,0 +1,18 @@
+[package]
+name = "tern-vt"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Tern's VT terminal state machine, paged scrollback, and parser"
+
+[dependencies]
+base64 = "0.22.0"
+bitflags = "2.4.1"
+unicode-width = "0.2.0"
+# Finds escapes in output.
+memchr = "2"
+# The scrollback's rows grown into while output pours in are mapped from the
+# system directly, so that their memory goes back to it when they are freed.
+libc.workspace = true

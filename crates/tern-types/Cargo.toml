@@ -1,0 +1,11 @@
+[package]
+name = "tern-types"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Shared frame, cell, geometry, key, mode, and theme data types for Tern"
+
+[dependencies]
+
