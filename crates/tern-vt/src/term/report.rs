@@ -40,6 +40,25 @@ impl<T: EventListener> Term<T> {
         }
     }
 
+    /// DEC private DSR `?996n`: report whether the terminal background is dark
+    /// (`?997;1n`) or light (`?997;2n`).
+    #[inline]
+    pub fn report_color_scheme(&mut self) {
+        self.event_proxy.send_event(Event::ColorRequest(
+            NamedColor::Background as usize,
+            Arc::new(|Rgb { r, g, b }| {
+                let dark = 299 * u32::from(r) + 587 * u32::from(g) + 114 * u32::from(b) <= 127_500;
+                if dark { "\x1b[?997;1n" } else { "\x1b[?997;2n" }.into()
+            }),
+        ));
+    }
+
+    /// XTVERSION (`CSI > 0 q`): report the terminal name and version.
+    #[inline]
+    pub fn report_terminal_version(&mut self) {
+        self.reply(concat!("\x1bP>|Tern ", env!("CARGO_PKG_VERSION"), "\x1b\\").into());
+    }
+
     /// XTWINOPS 14: how big the text area is in pixels.
     #[inline]
     pub fn text_area_size_pixels(&mut self) {
@@ -322,5 +341,43 @@ mod tests {
         assert_eq!(term.display_offset(), off1);
         assert!(term.jump_prompt(1));
         assert_eq!(term.display_offset(), 0);
+    }
+
+    #[test]
+    fn reports_color_scheme_mode_2031_and_xtversion() {
+        use crate::ansi::{NamedColor, Rgb};
+        use crate::engine::{Options, Terminal};
+        use crate::event::Event;
+
+        let mut term = Terminal::new(&Options::default(), 20, 4);
+        term.advance(b"\x1b[?2031$p\x1b[?2031h\x1b[?2031$p\x1b[?996n\x1b[>0q\x1b[?2031l\x1b[?2031$p");
+
+        let mut events = Vec::new();
+        term.take_events(&mut events);
+
+        let mut writes = Vec::new();
+        let mut dark_reply = None;
+        let mut light_reply = None;
+        for e in events {
+            match e {
+                Event::PtyWrite(s) => writes.push(s),
+                Event::ColorRequest(idx, fmt) if idx == NamedColor::Background as usize => {
+                    dark_reply = Some(fmt(Rgb { r: 0x18, g: 0x1a, b: 0x1f }));
+                    light_reply = Some(fmt(Rgb { r: 0xfd, g: 0xf6, b: 0xe3 }));
+                },
+                _ => {},
+            }
+        }
+        assert_eq!(dark_reply.as_deref(), Some("\x1b[?997;1n"));
+        assert_eq!(light_reply.as_deref(), Some("\x1b[?997;2n"));
+        assert_eq!(
+            writes,
+            vec![
+                "\x1b[?2031;2$y".to_owned(),
+                "\x1b[?2031;1$y".to_owned(),
+                concat!("\x1bP>|Tern ", env!("CARGO_PKG_VERSION"), "\x1b\\").to_owned(),
+                "\x1b[?2031;2$y".to_owned(),
+            ]
+        );
     }
 }

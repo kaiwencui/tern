@@ -24,7 +24,7 @@ Tern is a 1.3 MB native macOS terminal written from scratch in Rust (~28k produc
 
 ### Download (Apple Silicon, macOS 14+)
 
-Download the signed, Apple-notarized DMG from the [latest GitHub Release](https://github.com/kaiwencui/tern/releases/latest) (`Tern-0.1.1-arm64.dmg`, 1.4 MB), open it, and drag **Tern.app** to **Applications**.
+Download the signed, Apple-notarized DMG from the [latest GitHub Release](https://github.com/kaiwencui/tern/releases/latest) (`Tern-0.1.2-arm64.dmg`, 1.4 MB), open it, and drag **Tern.app** to **Applications**.
 
 ### Build from Source
 

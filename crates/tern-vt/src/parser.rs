@@ -69,6 +69,14 @@ pub(crate) trait Handler {
     /// DSR: a report of the terminal's status or the cursor's place.
     fn device_status(&mut self, _report: usize) {}
 
+    /// DEC private DSR `?996n`: report dark (`?997;1n`) or light (`?997;2n`)
+    /// background color scheme.
+    fn report_color_scheme(&mut self) {}
+
+    /// XTVERSION (`CSI > 0 q`): report the terminal name and version as a DCS
+    /// string (`DCS >| ... ST`).
+    fn report_terminal_version(&mut self) {}
+
     /// CUF and HPR: the cursor right.
     fn move_forward(&mut self, _columns: usize) {}
 

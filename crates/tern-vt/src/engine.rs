@@ -155,6 +155,11 @@ impl Terminal {
         self.term.sync_update()
     }
 
+    /// Whether color-scheme update notifications (private mode 2031) are enabled.
+    pub fn color_scheme_updates(&self) -> bool {
+        self.term.color_scheme_updates()
+    }
+
     /// When the synchronized update under way is to be ended for lasting too
     /// long, as of the last output interpreted.
     pub fn sync_deadline(&self) -> Option<Instant> {

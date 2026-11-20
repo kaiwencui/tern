@@ -160,9 +160,12 @@ pub(super) fn csi<H: Handler>(
         ([], b'M') => handler.delete_lines(usize::from(next_or(p, 1))),
         ([], b'm') => sgr(handler, p),
         ([], b'n') => handler.device_status(usize::from(next_or(p, 0))),
+        (b"?", b'n') if next_or(p, 0) == 996 => handler.report_color_scheme(),
         ([], b'P') => handler.delete_chars(usize::from(next_or(p, 1))),
         (b"$", b'p') => handler.report_mode(Mode::from_raw(next_or(p, 0))),
         (b"?$", b'p') => handler.report_private_mode(PrivateMode::from_raw(next_or(p, 0))),
+        // XTVERSION (`CSI > q` / `CSI > 0 q`).
+        (b">", b'q') if next_or(p, 0) == 0 => handler.report_terminal_version(),
         // DECSCUSR: odd numbers blink, and zero is the default.
         (b" ", b'q') => {
             let number = next_or(p, 0);

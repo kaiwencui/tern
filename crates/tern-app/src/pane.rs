@@ -371,25 +371,24 @@ pub fn grid(rect: Rect, metrics: &CellMetrics, padding: (i32, i32)) -> (u16, u16
     )
 }
 
-/// Where the grid of a pane starts when it is centered: inside the padding,
-/// in the middle of the space there, so what the whole cells leave over is
-/// shared between the two sides instead of gathering at the right and the
-/// bottom.
+/// Where the grid of a pane starts when it is centered horizontally: inside
+/// the padding, sharing leftover horizontal pixels between left and right while
+/// starting flush at the top padding so there is no extra gap below the tabs.
 fn centered_origin(
     rect: Rect,
     metrics: &CellMetrics,
     padding: (i32, i32),
     (cols, rows): (u16, u16),
 ) -> Point {
-    let start = |at: i32, length: i32, pad: i32, cells: u16, cell: u32| {
-        let used = i64::from(cells) * i64::from(cell) + 2 * i64::from(pad);
-        let spare = (i64::from(length) - used).max(0) / 2;
-        at.saturating_add(pad)
-            .saturating_add(i32::try_from(spare).unwrap_or(0))
-    };
+    let _ = rows;
+    let used = i64::from(cols) * i64::from(metrics.cell_w) + 2 * i64::from(padding.0);
+    let spare = (i64::from(rect.w) - used).max(0) / 2;
     Point {
-        x: start(rect.x, rect.w, padding.0, cols, metrics.cell_w),
-        y: start(rect.y, rect.h, padding.1, rows, metrics.cell_h),
+        x: rect
+            .x
+            .saturating_add(padding.0)
+            .saturating_add(i32::try_from(spare).unwrap_or(0)),
+        y: rect.y.saturating_add(padding.1),
     }
 }
 
@@ -442,10 +441,11 @@ mod tests {
             origin(Rect::new(0, 0, 812, 492), (6, 6)),
             Point { x: 6, y: 6 }
         );
-        // 7 and 15 pixels over: 3 and 7 of them go before the grid.
+        // 7 horizontal pixels over: 3 go before the grid; vertically the grid
+        // stays flush at the top padding.
         assert_eq!(
             origin(Rect::new(40, 30, 819, 507), (6, 6)),
-            Point { x: 49, y: 43 }
+            Point { x: 49, y: 36 }
         );
         // No room for the smallest grid: nothing to share.
         assert_eq!(origin(Rect::new(0, 0, 4, 4), (6, 6)), Point { x: 6, y: 6 });

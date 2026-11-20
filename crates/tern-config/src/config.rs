@@ -147,7 +147,7 @@ impl Default for Config {
             cursor_style: CursorShape::Block,
             cursor_style_blink: false,
             window_padding_x: 10,
-            window_padding_y: 10,
+            window_padding_y: 4,
             window_width: 100,
             window_height: 30,
             window_position_x: None,
@@ -613,7 +613,7 @@ pub(crate) mod tests {
         assert!(!c.theme.bold_is_bright);
         assert_eq!(c.cursor_style, CursorShape::Block);
         assert!(!c.cursor_style_blink);
-        assert_eq!((c.window_padding_x, c.window_padding_y), (10, 10));
+        assert_eq!((c.window_padding_x, c.window_padding_y), (10, 4));
         assert_eq!((c.window_width, c.window_height), (100, 30));
         assert_eq!(c.scrollback_lines, 10_000);
         assert_eq!(

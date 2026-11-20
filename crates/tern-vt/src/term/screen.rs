@@ -113,16 +113,20 @@ impl<T: EventListener> Term<T> {
     /// DECSET.
     #[inline]
     pub fn set_private_mode(&mut self, mode: PrivateMode) {
-        if let PrivateMode::Named(mode) = mode {
-            self.private_mode(mode, true);
+        match mode {
+            PrivateMode::Named(mode) => self.private_mode(mode, true),
+            PrivateMode::Unknown(2031) => self.color_scheme_updates = true,
+            PrivateMode::Unknown(_) => (),
         }
     }
 
     /// DECRST.
     #[inline]
     pub fn unset_private_mode(&mut self, mode: PrivateMode) {
-        if let PrivateMode::Named(mode) = mode {
-            self.private_mode(mode, false);
+        match mode {
+            PrivateMode::Named(mode) => self.private_mode(mode, false),
+            PrivateMode::Unknown(2031) => self.color_scheme_updates = false,
+            PrivateMode::Unknown(_) => (),
         }
     }
 
@@ -138,6 +142,7 @@ impl<T: EventListener> Term<T> {
                 Some(flag) => self.mode.contains(flag).into(),
                 None => ModeState::NotSupported,
             },
+            PrivateMode::Unknown(2031) => self.color_scheme_updates.into(),
             PrivateMode::Unknown(_) => ModeState::NotSupported,
         };
         self.reply(format!("\x1b[?{};{}$y", mode.raw(), state as u8));
@@ -187,6 +192,7 @@ impl<T: EventListener> Term<T> {
         self.keyboard_mode_stack = Vec::new();
         self.inactive_keyboard_mode_stack = Vec::new();
         self.mode = TermMode::default();
+        self.color_scheme_updates = false;
         self.event_proxy.send_event(Event::Progress(crate::event::Progress::Hidden));
         self.event_proxy.send_event(Event::CursorBlinkingChange);
         self.mark_fully_damaged();

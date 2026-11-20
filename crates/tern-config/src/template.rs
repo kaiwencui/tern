@@ -72,10 +72,11 @@ pub const DEFAULT_CONFIG_TEMPLATE: &str = r##"# Tern configuration
 # --- Windows and panes ---
 
 # Space between a pane's edges and its text, in points. In a window with one
-# pane, what is left over when the space inside does not divide into whole
-# cells is shared between the two sides, so the text sits centered.
+# pane, horizontal pixels left over when the width does not divide into whole
+# cells are shared between the left and right edges, while text starts flush
+# at the top padding below the tab bar.
 # window-padding-x = 10
-# window-padding-y = 10
+# window-padding-y = 4
 
 # The size of a new window in cells: 10 to 1000 wide, 4 to 1000 high
 # (new windows only).

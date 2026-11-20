@@ -146,12 +146,27 @@ fn style_titlebar_views(
     for_each_descendant(&container, b"NSTitlebarBackgroundView", &mut |bg_view| {
         bg_view.setHidden(true);
     });
+    for_each_descendant(&container, b"NSVisualEffectView", &mut |vev| {
+        vev.setHidden(true);
+    });
+    if in_fullscreen_bar {
+        for_each_descendant(&root, b"_NSBoxCustomView", &mut |box_view| {
+            box_view.setWantsLayer(true);
+            if let Some(layer) = box_view.layer() {
+                layer.setBackgroundColor(Some(&cg));
+            }
+        });
+    }
     if let Some(tab_bar) = descendant_by_class(&container, b"NSTabBar") {
         tab_bar.setAppearance(appearance);
-        if let Some(track) = descendant_by_class(&tab_bar, b"NSSubduedGlassEffectView")
-            && let Some(first) = track.subviews().firstObject()
-        {
-            first.setAlphaValue(if dark { 0.5 } else { 1.0 });
+        for_each_descendant(&tab_bar, b"NSGlassEffectView", &mut |glass| {
+            glass.setAppearance(appearance);
+        });
+        if let Some(track) = descendant_by_class(&tab_bar, b"NSSubduedGlassEffectView") {
+            track.setAppearance(appearance);
+            if let Some(first) = track.subviews().firstObject() {
+                first.setAlphaValue(if dark { 0.5 } else { 1.0 });
+            }
         }
     }
 }
@@ -182,10 +197,15 @@ pub fn tint(window: &NSWindow, bg: Rgb) {
 
     let bar = bar_window(window);
     if !std::ptr::eq(&*bar, window) {
+        let cg = color.CGColor();
         bar.setBackgroundColor(Some(&color));
         bar.setAppearance(appearance.as_deref());
         if let Some(cv) = bar.contentView() {
             cv.setAppearance(appearance.as_deref());
+            cv.setWantsLayer(true);
+            if let Some(layer) = cv.layer() {
+                layer.setBackgroundColor(Some(&cg));
+            }
         }
         style_titlebar_views(&bar, &color, appearance.as_deref(), dark, true);
     }
@@ -401,7 +421,13 @@ define_class!(
         #[unsafe(method(windowDidResize:))]
         fn window_did_resize(&self, _: &NSNotification) {
             // The tabs moved under a name being typed over one of them.
-            app().rename_displaced(self.ivars().id, false);
+            let state = self.ivars();
+            app().rename_displaced(state.id, false);
+            if let Some(w) = state.window()
+                && w.styleMask().contains(NSWindowStyleMask::FullScreen)
+            {
+                state.reapply_chrome();
+            }
             self.sync_view();
         }
 

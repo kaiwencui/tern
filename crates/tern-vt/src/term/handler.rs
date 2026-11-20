@@ -73,6 +73,16 @@ impl<T: EventListener> Handler for Term<T> {
     }
 
     #[inline]
+    fn report_color_scheme(&mut self) {
+        Term::report_color_scheme(self);
+    }
+
+    #[inline]
+    fn report_terminal_version(&mut self) {
+        Term::report_terminal_version(self);
+    }
+
+    #[inline]
     fn move_forward(&mut self, columns: usize) {
         Term::move_forward(self, columns);
     }

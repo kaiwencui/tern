@@ -463,7 +463,25 @@ impl Session {
     /// Replaces the colors the terminal starts from. Colors a program set at
     /// run time stay in effect.
     pub fn set_theme(&self, theme: Theme) {
-        self.inner.with_term(move |state| state.theme = theme);
+        let is_dark = |bg: u32| {
+            let (r, g, b) = ((bg >> 16) & 0xff, (bg >> 8) & 0xff, bg & 0xff);
+            299 * r + 587 * g + 114 * b <= 127_500
+        };
+        let new_dark = is_dark(theme.bg);
+        let writes = self.writes.clone();
+        self.inner.with_term(move |state| {
+            let old_dark = is_dark(state.theme.bg);
+            state.theme = theme;
+            if old_dark != new_dark && state.term.color_scheme_updates() {
+                let report: &[u8] = if new_dark {
+                    b"\x1b[?997;1n"
+                } else {
+                    b"\x1b[?997;2n"
+                };
+                // Fails only once the terminal is gone.
+                drop(writes.send(report.to_vec()));
+            }
+        });
     }
 
     /// Changes the cursor the terminal shows until a program asks for

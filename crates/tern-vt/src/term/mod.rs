@@ -182,6 +182,7 @@ pub struct Term<T> {
     options: Options,
     damage: TermDamageState,
     sync_update: bool,
+    color_scheme_updates: bool,
 }
 
 impl<T> Term<T> {
@@ -221,6 +222,7 @@ impl<T> Term<T> {
             options,
             damage,
             sync_update: false,
+            color_scheme_updates: false,
         }
     }
 
@@ -240,6 +242,11 @@ impl<T> Term<T> {
     #[inline]
     pub fn sync_update(&self) -> bool {
         self.sync_update
+    }
+
+    #[inline]
+    pub fn color_scheme_updates(&self) -> bool {
+        self.color_scheme_updates
     }
 
     #[inline]
