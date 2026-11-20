@@ -1,6 +1,8 @@
 //! The main menu. Every item performs an [AppCommand], and items for
 //! configurable actions show the shortcut the key bindings give them.
 
+use std::borrow::Cow;
+
 use objc2::{sel, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{NSApplication, NSEventModifierFlags, NSMenu, NSMenuItem};
 use objc2_foundation::NSString;
@@ -8,6 +10,8 @@ use tern_config::{
     Action, Bindings, Direction, FocusTarget, FontSizeChange, PromptDirection, ScrollTarget,
 };
 use tern_types::{Key, Mods};
+
+use crate::identity;
 
 /// What a menu item or an automation request can ask for: a configurable
 /// action, or one of the standard macOS commands that have no binding.
@@ -83,36 +87,40 @@ impl AppCommand {
 }
 
 enum Entry {
-    Item(&'static str, AppCommand),
+    Item(Cow<'static, str>, AppCommand),
     Separator,
 }
 
-fn act(title: &'static str, action: Action) -> Entry {
-    Entry::Item(title, AppCommand::Do(action))
+fn item(title: impl Into<Cow<'static, str>>, command: AppCommand) -> Entry {
+    Entry::Item(title.into(), command)
+}
+
+fn act(title: impl Into<Cow<'static, str>>, action: Action) -> Entry {
+    Entry::Item(title.into(), AppCommand::Do(action))
 }
 
 /// The menus and their items. The first menu's title is replaced by the
 /// app name.
-fn layout() -> Vec<(&'static str, Vec<Entry>)> {
-    use Entry::{Item, Separator};
+fn layout(app_name: &str) -> Vec<(Cow<'static, str>, Vec<Entry>)> {
+    use Entry::Separator;
     vec![
         (
-            "Tern",
+            Cow::Owned(app_name.to_owned()),
             vec![
-                Item("About Tern", AppCommand::About),
+                item(format!("About {app_name}"), AppCommand::About),
                 Separator,
                 act("Settings…", Action::OpenConfig),
                 act("Reload Configuration", Action::ReloadConfig),
                 Separator,
-                Item("Hide Tern", AppCommand::Hide),
-                Item("Hide Others", AppCommand::HideOthers),
-                Item("Show All", AppCommand::ShowAll),
+                item(format!("Hide {app_name}"), AppCommand::Hide),
+                item("Hide Others", AppCommand::HideOthers),
+                item("Show All", AppCommand::ShowAll),
                 Separator,
-                act("Quit Tern", Action::Quit),
+                act(format!("Quit {app_name}"), Action::Quit),
             ],
         ),
         (
-            "Shell",
+            Cow::Borrowed("Shell"),
             vec![
                 act("New Window", Action::NewWindow),
                 act("New Tab", Action::NewTab),
@@ -128,7 +136,7 @@ fn layout() -> Vec<(&'static str, Vec<Entry>)> {
             ],
         ),
         (
-            "Edit",
+            Cow::Borrowed("Edit"),
             vec![
                 act("Copy", Action::Copy),
                 act("Paste", Action::Paste),
@@ -143,7 +151,7 @@ fn layout() -> Vec<(&'static str, Vec<Entry>)> {
             ],
         ),
         (
-            "View",
+            Cow::Borrowed("View"),
             vec![
                 act("Show/Hide Tab Bar", Action::ToggleTabBar),
                 Separator,
@@ -163,10 +171,10 @@ fn layout() -> Vec<(&'static str, Vec<Entry>)> {
             ],
         ),
         (
-            "Window",
+            Cow::Borrowed("Window"),
             vec![
-                Item("Minimize", AppCommand::Minimize),
-                Item("Zoom", AppCommand::Zoom),
+                item("Minimize", AppCommand::Minimize),
+                item("Zoom", AppCommand::Zoom),
                 Separator,
                 act("Rename Tab…", Action::RenameTab),
                 act("Show Previous Tab", Action::PreviousTab),
@@ -182,7 +190,7 @@ fn layout() -> Vec<(&'static str, Vec<Entry>)> {
                 act("Zoom Split", Action::ToggleZoom),
                 act("Equalize Splits", Action::EqualizeSplits),
                 Separator,
-                Item("Bring All to Front", AppCommand::BringAllToFront),
+                item("Bring All to Front", AppCommand::BringAllToFront),
             ],
         ),
     ]
@@ -199,8 +207,8 @@ pub fn install(
 ) -> Vec<AppCommand> {
     let main = NSMenu::new(mtm);
     let mut commands = Vec::new();
-    for (title, entries) in layout() {
-        let menu = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(title));
+    for (title, entries) in layout(identity::app_name()) {
+        let menu = NSMenu::initWithTitle(NSMenu::alloc(mtm), &NSString::from_str(&title));
         for entry in entries {
             let (title, command) = match entry {
                 Entry::Separator => {
@@ -214,7 +222,7 @@ pub fn install(
             let item = unsafe {
                 NSMenuItem::initWithTitle_action_keyEquivalent(
                     NSMenuItem::alloc(mtm),
-                    &NSString::from_str(title),
+                    &NSString::from_str(&title),
                     Some(sel!(performAction:)),
                     &NSString::from_str(&key),
                 )
@@ -317,7 +325,7 @@ mod tests {
             assert_eq!(AppCommand::parse(name), Some(command.clone()));
             assert_eq!(command.name(), name);
         }
-        for (_, entries) in layout() {
+        for (_, entries) in layout("Tern") {
             for entry in entries {
                 if let Entry::Item(title, command) = entry {
                     assert_eq!(AppCommand::parse(&command.name()), Some(command), "{title}");
@@ -329,6 +337,23 @@ mod tests {
             Some(AppCommand::Do(Action::GotoTab(2)))
         );
         assert_eq!(AppCommand::parse("nope"), None);
+    }
+
+    #[test]
+    fn app_menu_uses_runtime_app_name() {
+        let menus = layout("Tern Next");
+        let (title, entries) = &menus[0];
+        assert_eq!(title, "Tern Next");
+        let item_titles: Vec<&str> = entries
+            .iter()
+            .filter_map(|e| match e {
+                Entry::Item(t, _) => Some(t.as_ref()),
+                Entry::Separator => None,
+            })
+            .collect();
+        assert!(item_titles.contains(&"About Tern Next"));
+        assert!(item_titles.contains(&"Hide Tern Next"));
+        assert!(item_titles.contains(&"Quit Tern Next"));
     }
 
     #[test]

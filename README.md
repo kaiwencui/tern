@@ -206,13 +206,20 @@ TERN_TEST_WAY=awake-own cargo test -p tern-core   # force specific PTY reader sc
 cargo test -p tern-app -- --include-ignored --test-threads=1   # live AppKit/Metal socket tests
 cargo clippy --workspace --all-targets
 ./scripts/build-app.sh                            # LTO release build -> build/Tern.app
+./scripts/build-app.sh --next fast                # Preview build -> build/Tern Next.app
 ./scripts/notarize.sh                             # Developer ID sign, notarize & staple dist/Tern.zip
 ./scripts/notarize.sh dmg                         # Developer ID sign, notarize & staple a DMG in dist/
 ./scripts/bench.sh 5                              # reproducible multi-terminal benchmark suite
 ```
 
-For signed releases, set `TERN_SIGNING_IDENTITY` to the Developer ID Application
-identity in your Mac's keychain and `TERN_NOTARY_PROFILE` to a profile saved with
+Tern Next is the preview app with an amber Dock icon. It has its own macOS bundle ID and
+saves its windows and panes in `~/.local/state/tern-next/session` (or
+`$XDG_STATE_HOME/tern-next/session`).
+Build Next from `main` to try changes before tagging a stable release.
+
+Set `TERN_SIGNING_IDENTITY` to the Developer ID Application identity in your
+Mac's keychain so macOS can remember permissions across builds of each app.
+To notarize a release, also set `TERN_NOTARY_PROFILE` to a profile saved with
 `xcrun notarytool store-credentials`.
 
 ## License

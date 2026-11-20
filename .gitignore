@@ -2,3 +2,4 @@ target/
 build/
 dist/
 .DS_Store
+.playwright-mcp/

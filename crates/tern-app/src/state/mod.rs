@@ -22,6 +22,7 @@ use tern_render::{CellMetrics, PaneDraw, Present, PresentedHandler, Quad};
 use tern_types::{Frame, Mods, PaneId, Point, Rect, Rgb};
 
 use crate::app::app;
+use crate::identity;
 use crate::input::{InputLog, KeyState};
 use crate::mainthread::post_to_main;
 use crate::pane::{FrameRequest, Pane};
@@ -535,7 +536,7 @@ impl WindowState {
                 self.cwd_checked.set(Instant::now());
                 self.with_focused(|p| p.session.cwd())
                     .flatten()
-                    .map_or_else(|| "Tern".into(), |dir| directory_title(&dir))
+                    .map_or_else(|| identity::app_name().to_owned(), |dir| directory_title(&dir))
             }
         };
         if let Some(window) = self.window()

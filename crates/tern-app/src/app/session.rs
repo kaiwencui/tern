@@ -1,10 +1,12 @@
 //! Saving and restoring open windows, tabs, split trees and working
-//! directories in `~/.local/state/tern/session`.
+//! directories in the app's state directory.
 
 use std::collections::HashSet;
+use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use std::sync::Arc;
 
 use objc2::rc::Retained;
@@ -15,6 +17,7 @@ use tern_layout::Layout;
 use tern_types::PaneId;
 
 use super::{App, Placement};
+use crate::identity;
 use crate::pane::{cell_size, new_pane_id, FrameRequest, Launch, Pane};
 use crate::Options;
 
@@ -61,18 +64,38 @@ pub fn should_restore(config: &Config, options: &Options) -> bool {
 }
 
 pub fn session_file_path(records_input: bool) -> Option<PathBuf> {
-    if let Some(explicit) = std::env::var_os("TERN_SESSION_FILE") {
+    session_file_path_in(
+        std::env::var_os("TERN_SESSION_FILE"),
+        records_input,
+        std::env::var_os("XDG_STATE_HOME"),
+        std::env::var_os("HOME"),
+        identity::state_dir_name(),
+    )
+}
+
+fn session_file_path_in(
+    explicit: Option<OsString>,
+    records_input: bool,
+    xdg_state_home: Option<OsString>,
+    home: Option<OsString>,
+    app_directory: &str,
+) -> Option<PathBuf> {
+    if let Some(explicit) = explicit {
         let p = PathBuf::from(explicit);
         return (!p.as_os_str().is_empty()).then_some(p);
     }
     if records_input {
         return None;
     }
-    if let Some(state_home) = std::env::var_os("XDG_STATE_HOME").filter(|s| !s.is_empty()) {
-        return Some(PathBuf::from(state_home).join("tern/session"));
-    }
-    let home = std::env::var_os("HOME").filter(|s| !s.is_empty())?;
-    Some(PathBuf::from(home).join(".local/state/tern/session"))
+    // The XDG base directory spec says to ignore a relative path.
+    let state_home = xdg_state_home
+        .map(PathBuf::from)
+        .filter(|dir| dir.is_absolute())
+        .or_else(|| {
+            let home = home.map(PathBuf::from).filter(|dir| dir.is_absolute())?;
+            Some(home.join(".local/state"))
+        })?;
+    Some(state_home.join(app_directory).join("session"))
 }
 
 pub fn load_saved(config: &Config, options: &Options) -> Option<SavedSession> {
@@ -411,8 +434,6 @@ impl App {
     }
 }
 
-use std::rc::Rc;
-
 fn clamp_frame_to_screens(mtm: objc2::MainThreadMarker, rect: NSRect) -> NSRect {
     let screens = NSScreen::screens(mtm);
     let Some(target) = screens
@@ -446,15 +467,62 @@ fn write_session_atomic(path: &Path, data: &str) {
         && fs::create_dir_all(parent).is_err() {
             return;
         }
-    let tmp = path.with_extension("tmp");
-    if fs::write(&tmp, data).is_ok() {
-        let _ = fs::rename(&tmp, path);
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("session");
+    let tmp = path.with_file_name(format!(".{name}.tmp.{}", std::process::id()));
+    if fs::write(&tmp, data)
+        .and_then(|()| fs::rename(&tmp, path))
+        .is_err()
+    {
+        let _ = fs::remove_file(&tmp);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn session_file_path_respects_variant_and_xdg_spec() {
+        let os = |s: &str| Some(OsString::from(s));
+
+        assert_eq!(
+            session_file_path_in(None, false, None, os("/Users/kai"), "tern"),
+            Some(PathBuf::from("/Users/kai/.local/state/tern/session"))
+        );
+        assert_eq!(
+            session_file_path_in(None, false, None, os("/Users/kai"), "tern-next"),
+            Some(PathBuf::from("/Users/kai/.local/state/tern-next/session"))
+        );
+        assert_eq!(
+            session_file_path_in(None, false, os("/tmp/state"), os("/Users/kai"), "tern-next"),
+            Some(PathBuf::from("/tmp/state/tern-next/session"))
+        );
+        // Relative XDG_STATE_HOME is ignored per XDG spec.
+        assert_eq!(
+            session_file_path_in(None, false, os("relative/state"), os("/Users/kai"), "tern-next"),
+            Some(PathBuf::from("/Users/kai/.local/state/tern-next/session"))
+        );
+        assert_eq!(
+            session_file_path_in(None, false, os("relative"), os("also-relative"), "tern"),
+            None
+        );
+        // Automation mode skips default session file unless explicitly overridden.
+        assert_eq!(
+            session_file_path_in(None, true, os("/tmp/state"), os("/Users/kai"), "tern"),
+            None
+        );
+        assert_eq!(
+            session_file_path_in(os("/tmp/custom"), true, None, None, "tern"),
+            Some(PathBuf::from("/tmp/custom"))
+        );
+        assert_eq!(
+            session_file_path_in(os(""), false, os("/tmp/state"), os("/Users/kai"), "tern"),
+            None
+        );
+    }
 
     #[test]
     fn session_text_round_trips_groups_tabs_splits_and_paths() {

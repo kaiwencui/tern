@@ -16,19 +16,18 @@ use objc2_app_kit::{
     NSWindowTabbingMode,
 };
 use objc2_foundation::{
-    ns_string, NSNotification, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSTimer,
+    NSNotification, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString, NSTimer,
 };
 use tern_render::CellMetrics;
 use tern_types::Rgb;
 
 use crate::app::{app, CloseTarget};
+use crate::identity;
 use crate::pane::Pane;
 use crate::startup::StartupProbe;
 use crate::state::WindowState;
 use crate::view::TernView;
 
-/// Windows with this identifier share tab groups.
-const TABBING_ID: &str = "com.kaicui.tern.terminal";
 const MIN_CONTENT_SIZE: NSSize = NSSize::new(160.0, 100.0);
 
 /// Every window's style: a titled, resizable window.
@@ -268,8 +267,8 @@ impl TernWindow {
         unsafe { window.setReleasedWhenClosed(false) };
         window.setRestorable(false);
         window.setTabbingMode(NSWindowTabbingMode::Preferred);
-        window.setTabbingIdentifier(ns_string!(TABBING_ID));
-        window.setTitle(ns_string!("Tern"));
+        window.setTabbingIdentifier(&NSString::from_str(identity::tabbing_id()));
+        window.setTitle(&NSString::from_str(identity::app_name()));
         // The window's background shows in the title bar; see tint.
         window.setTitlebarAppearsTransparent(true);
         enable_fullscreen_transparent_titlebar(&window);

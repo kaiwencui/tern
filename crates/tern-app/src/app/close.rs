@@ -14,6 +14,7 @@ use objc2_foundation::NSString;
 use tern_types::PaneId;
 
 use super::App;
+use crate::identity;
 use crate::mainthread::post_to_main;
 use crate::state::WindowState;
 
@@ -94,7 +95,7 @@ impl App {
         self.ask(Question {
             window: None,
             subject: Subject::Quit,
-            message: "Quit Tern?".into(),
+            message: format!("Quit {}?", identity::app_name()),
             detail: format!(
                 "{} {} still running. Quitting ends {}.",
                 list(&busy),

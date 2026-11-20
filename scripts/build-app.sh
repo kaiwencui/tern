@@ -1,15 +1,54 @@
 #!/bin/zsh
-# Builds build/Tern.app from the release binary (no Xcode project needed).
-# Usage: scripts/build-app.sh [cargo profile]   (default: release)
+# Builds Tern.app or Tern Next.app in build/ (no Xcode project needed).
+# Usage: scripts/build-app.sh [--next] [cargo profile]   (default: release)
 set -euo pipefail
 cd "$(dirname "$0")/.."
-PROFILE="${1:-release}"
+APP_NAME="Tern"
+ICON_NAME="Tern"
+IS_NEXT=0
+PROFILE=""
+for arg in "$@"; do
+    case "$arg" in
+        --next)
+            IS_NEXT=1
+            APP_NAME="Tern Next"
+            ICON_NAME="TernNext"
+            ;;
+        -*)
+            echo "Usage: $0 [--next] [cargo profile]" >&2
+            exit 2
+            ;;
+        *)
+            if [[ -n "$PROFILE" ]]; then
+                echo "Usage: $0 [--next] [cargo profile]" >&2
+                exit 2
+            fi
+            PROFILE="$arg"
+            ;;
+    esac
+done
+PROFILE="${PROFILE:-release}"
+VERSION="$(awk '
+    /^\[workspace\.package\]/ { in_pkg = 1; next }
+    /^\[/ { in_pkg = 0 }
+    in_pkg && /^version[[:space:]]*=/ {
+        sub(/^[^"]*"/, "")
+        sub(/".*$/, "")
+        print
+        exit
+    }
+' Cargo.toml)"
+if [[ -z "$VERSION" ]]; then
+    echo "error: could not read workspace version from Cargo.toml" >&2
+    exit 1
+fi
 cargo build --profile "$PROFILE" -p tern-app --bin tern
 # Cargo puts the dev profile in target/debug.
 OUT_DIR="$PROFILE"
 [[ "$PROFILE" == "dev" ]] && OUT_DIR="debug"
 BIN="${CARGO_TARGET_DIR:-target}/$OUT_DIR/tern"
-APP="build/Tern.app"
+APP="build/$APP_NAME.app"
+PLIST="$APP/Contents/Info.plist"
 # The bundle holds exactly these files, so copying over an older bundle
 # leaves nothing stale behind; codesign rewrites the signature.
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -17,9 +56,43 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 # the file it started from instead of having it overwritten under it.
 cp "$BIN" "$APP/Contents/MacOS/tern.new"
 mv -f "$APP/Contents/MacOS/tern.new" "$APP/Contents/MacOS/tern"
-cp resources/Info.plist "$APP/Contents/Info.plist"
-cp resources/Tern.icns "$APP/Contents/Resources/Tern.icns"
-plutil -lint -s "$APP/Contents/Info.plist"
+cp resources/Info.plist "$PLIST"
+rm -f "$APP/Contents/Resources/"*.icns(N)
+cp "resources/$ICON_NAME.icns" "$APP/Contents/Resources/$ICON_NAME.icns"
+
+SHORT_VERSION="$VERSION"
+BUILD_VERSION="$VERSION"
+if (( IS_NEXT )); then
+    SHORT_VERSION="${VERSION}-next"
+    SHA="$(git rev-parse --short=7 HEAD 2>/dev/null || echo dev)"
+    if [[ -n "$(git status --porcelain --untracked-files=no 2>/dev/null || true)" ]]; then
+        SHA="${SHA}-dirty"
+    fi
+    BUILD_VERSION="$SHA"
+fi
+
+/usr/libexec/PlistBuddy \
+    -c "Set :CFBundleIconFile $ICON_NAME" \
+    -c "Set :CFBundleShortVersionString $SHORT_VERSION" \
+    -c "Set :CFBundleVersion $BUILD_VERSION" \
+    "$PLIST"
+
+if (( IS_NEXT )); then
+    /usr/libexec/PlistBuddy \
+        -c "Set :CFBundleIdentifier com.kaicui.tern.next" \
+        -c "Set :CFBundleName $APP_NAME" \
+        -c "Set :CFBundleDisplayName $APP_NAME" \
+        "$PLIST"
+    i=0
+    while MENU_ITEM="$(/usr/libexec/PlistBuddy -c "Print :NSServices:$i:NSMenuItem:default" "$PLIST" 2>/dev/null)"; do
+        if [[ "$MENU_ITEM" == *"Tern"* ]]; then
+            UPDATED="${MENU_ITEM//Tern/$APP_NAME}"
+            /usr/libexec/PlistBuddy -c "Set :NSServices:$i:NSMenuItem:default $UPDATED" "$PLIST"
+        fi
+        (( i += 1 ))
+    done
+fi
+plutil -lint -s "$PLIST"
 # Sign with TERN_SIGNING_IDENTITY when it is in the keychain, so macOS keeps
 # permissions granted to Tern from one build to the next; an ad-hoc
 # signature changes with every build.

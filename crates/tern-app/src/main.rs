@@ -3,6 +3,7 @@
 mod app;
 mod automation;
 mod clipboard;
+mod identity;
 mod input;
 mod keymap;
 mod links;

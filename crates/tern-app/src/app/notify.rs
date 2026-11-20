@@ -8,10 +8,11 @@ use objc2::rc::Retained;
 use objc2::runtime::{AnyClass, AnyObject, Bool, NSObject};
 use objc2::msg_send;
 use objc2_app_kit::{NSApplication, NSRequestUserAttentionType};
-use objc2_foundation::{NSBundle, NSString};
+use objc2_foundation::NSString;
 use tern_types::PaneId;
 
 use super::App;
+use crate::identity;
 
 #[link(name = "UserNotifications", kind = "framework")]
 unsafe extern "C" {}
@@ -23,7 +24,7 @@ impl App {
     pub fn pane_notify(&self, pane: PaneId, title: Option<String>, body: String) {
         let heading = title
             .filter(|t| !t.trim().is_empty())
-            .unwrap_or_else(|| "Tern".to_owned());
+            .unwrap_or_else(|| identity::app_name().to_owned());
 
         if self.records_input() {
             self.notifications
@@ -52,7 +53,7 @@ impl App {
 fn post_macos_notification(title: &str, body: &str) {
     // UNUserNotificationCenter throws an Objective-C exception if invoked from
     // an unbundled executable without a CFBundleIdentifier.
-    if NSBundle::mainBundle().bundleIdentifier().is_none() {
+    if !identity::is_bundled() {
         return;
     }
     let (Some(center_cls), Some(content_cls), Some(req_cls)) = (
