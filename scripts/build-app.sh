@@ -47,7 +47,7 @@ cargo build --profile "$PROFILE" -p tern-app --bin tern
 OUT_DIR="$PROFILE"
 [[ "$PROFILE" == "dev" ]] && OUT_DIR="debug"
 BIN="${CARGO_TARGET_DIR:-target}/$OUT_DIR/tern"
-APP="build/$APP_NAME.app"
+APP="${TERN_BUILD_DIR:-build}/$APP_NAME.app"
 PLIST="$APP/Contents/Info.plist"
 # The bundle holds exactly these files, so copying over an older bundle
 # leaves nothing stale behind; codesign rewrites the signature.

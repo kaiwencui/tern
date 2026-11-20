@@ -209,6 +209,7 @@ cargo clippy --workspace --all-targets
 ./scripts/build-app.sh --next fast                # Preview build -> build/Tern Next.app
 ./scripts/notarize.sh                             # Developer ID sign, notarize & staple dist/Tern.zip
 ./scripts/notarize.sh dmg                         # Developer ID sign, notarize & staple a DMG in dist/
+./scripts/notarize.sh --next dmg                  # Developer ID sign, notarize & staple Tern Next DMG in dist/
 ./scripts/bench.sh 5                              # reproducible multi-terminal benchmark suite
 ```
 
