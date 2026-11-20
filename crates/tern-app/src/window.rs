@@ -149,14 +149,6 @@ fn style_titlebar_views(
     for_each_descendant(&container, b"NSVisualEffectView", &mut |vev| {
         vev.setHidden(true);
     });
-    if in_fullscreen_bar {
-        for_each_descendant(&root, b"_NSBoxCustomView", &mut |box_view| {
-            box_view.setWantsLayer(true);
-            if let Some(layer) = box_view.layer() {
-                layer.setBackgroundColor(Some(&cg));
-            }
-        });
-    }
     if let Some(tab_bar) = descendant_by_class(&container, b"NSTabBar") {
         tab_bar.setAppearance(appearance);
         for_each_descendant(&tab_bar, b"NSGlassEffectView", &mut |glass| {
@@ -197,15 +189,13 @@ pub fn tint(window: &NSWindow, bg: Rgb) {
 
     let bar = bar_window(window);
     if !std::ptr::eq(&*bar, window) {
-        let cg = color.CGColor();
-        bar.setBackgroundColor(Some(&color));
+        // AppKit's detached window extends below the tab bar, over the
+        // first terminal rows. Only tint the titlebar views within it.
+        bar.setOpaque(false);
+        bar.setBackgroundColor(Some(&NSColor::clearColor()));
         bar.setAppearance(appearance.as_deref());
         if let Some(cv) = bar.contentView() {
             cv.setAppearance(appearance.as_deref());
-            cv.setWantsLayer(true);
-            if let Some(layer) = cv.layer() {
-                layer.setBackgroundColor(Some(&cg));
-            }
         }
         style_titlebar_views(&bar, &color, appearance.as_deref(), dark, true);
     }
