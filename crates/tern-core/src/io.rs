@@ -311,6 +311,12 @@ impl Inner {
         }
     }
 
+    /// Monotonic counter incremented whenever a chunk of child output is
+    /// interpreted. Used to detect active output even when a tab is occluded.
+    pub(crate) fn output_counter(&self) -> u32 {
+        self.pieces.load(Ordering::Acquire)
+    }
+
     /// Calls the wakeup callback unless one is already outstanding.
     pub(crate) fn request_wakeup(&self) {
         if !self.wake_pending.swap(true, Ordering::AcqRel) {

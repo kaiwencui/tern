@@ -138,6 +138,10 @@ impl WindowState {
     pub fn woke(&self) {
         let paused = self.link.borrow().as_ref().is_some_and(|l| l.isPaused());
         self.request_frame();
+        if self.occluded.get() {
+            self.check_activity_after_output();
+            return;
+        }
         if paused && !self.live_resize.get() {
             self.tick();
         }

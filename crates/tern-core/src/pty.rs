@@ -666,6 +666,16 @@ pub(crate) fn foreground_group(master: &OwnedFd) -> Option<pid_t> {
     (pgrp > 0).then_some(pgrp)
 }
 
+/// Whether the PTY line discipline is in canonical (line-buffered) mode.
+/// Non-interactive batch commands leave `ICANON` enabled; interactive TUIs and
+/// REPLs (Claude Code, vim, ssh, etc.) turn it off to read raw keystrokes.
+pub(crate) fn is_canonical(master: &OwnedFd) -> bool {
+    // SAFETY: termios is a plain C struct, valid when zeroed.
+    let mut t: libc::termios = unsafe { mem::zeroed() };
+    // SAFETY: tcgetattr only reads the descriptor's terminal attributes.
+    unsafe { libc::tcgetattr(master.as_raw_fd(), &mut t) == 0 && (t.c_lflag & libc::ICANON) != 0 }
+}
+
 /// The current working directory of a process.
 pub(crate) fn process_cwd(pid: pid_t) -> Option<PathBuf> {
     let mut info = MaybeUninit::<libc::proc_vnodepathinfo>::zeroed();
@@ -852,5 +862,30 @@ mod tests {
             .expect("canonical");
         assert_eq!(cwd.canonicalize().expect("canonical"), real);
         assert!(process_name(me).is_some_and(|n| !n.is_empty()));
+    }
+
+    #[test]
+    fn canonical_mode_tracks_slave_termios() {
+        let mut master_fd: c_int = -1;
+        let mut slave_fd: c_int = -1;
+        // SAFETY: openpty writes valid fds on success.
+        assert_eq!(
+            unsafe { libc::openpty(&mut master_fd, &mut slave_fd, ptr::null_mut(), ptr::null_mut(), ptr::null_mut()) },
+            0
+        );
+        // SAFETY: both descriptors were just returned by openpty.
+        let master = unsafe { OwnedFd::from_raw_fd(master_fd) };
+        let slave = unsafe { OwnedFd::from_raw_fd(slave_fd) };
+
+        assert!(is_canonical(&master));
+
+        // SAFETY: termios is plain data; toggling ICANON on slave updates PTY line discipline.
+        unsafe {
+            let mut t: libc::termios = mem::zeroed();
+            assert_eq!(libc::tcgetattr(slave.as_raw_fd(), &mut t), 0);
+            t.c_lflag &= !libc::ICANON;
+            assert_eq!(libc::tcsetattr(slave.as_raw_fd(), libc::TCSANOW, &t), 0);
+        }
+        assert!(!is_canonical(&master));
     }
 }

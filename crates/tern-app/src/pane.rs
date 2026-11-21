@@ -196,6 +196,15 @@ pub struct Pane {
     pub frame: Frame,
     pub title: Option<String>,
     pub progress: Progress,
+    /// True once the current foreground program emits an explicit `OSC 9;4`
+    /// progress update; cleared when the pane returns to its shell prompt.
+    pub progress_managed: bool,
+    /// Last `Session::output_counter()` observed by tab activity tracking.
+    pub last_output_counter: u32,
+    /// Most recent time output arrived outside the post-keystroke echo window.
+    pub last_autonomous_output: Option<Instant>,
+    /// Most recent time user input was written to this pane.
+    pub last_input: Option<Instant>,
     pub events: Arc<PaneEvents>,
     /// The pane's area in the window's drawable, in pixels.
     pub rect: Rect,
@@ -258,12 +267,17 @@ impl Pane {
             }
         };
         LIVE_PANES.fetch_add(1, Ordering::Relaxed);
+        let initial_output = session.output_counter();
         Ok(Pane {
             id,
             session: Arc::new(session),
             frame: Frame::default(),
             title: None,
             progress: Progress::Hidden,
+            progress_managed: false,
+            last_output_counter: initial_output,
+            last_autonomous_output: None,
+            last_input: None,
             events,
             rect: Rect::default(),
             origin: Point::default(),

@@ -610,7 +610,9 @@ impl WindowState {
             return;
         }
         self.typed();
-        let scrolled = self.panes.borrow().iter().find(|p| p.id == id).map(|p| {
+        let now = Instant::now();
+        let scrolled = self.panes.borrow_mut().iter_mut().find(|p| p.id == id).map(|p| {
+            p.last_input = Some(now);
             p.session.write(bytes);
             let back = p.frame.display_offset > 0;
             if back {

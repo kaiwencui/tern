@@ -551,6 +551,19 @@ impl Session {
         pty::process_name(group)
     }
 
+    /// Whether the PTY is currently in canonical (line-buffered) input mode.
+    /// Interactive raw-mode/TUI programs clear `ICANON`, whereas batch
+    /// commands keep it set.
+    pub fn is_canonical_input(&self) -> bool {
+        self.is_alive() && pty::is_canonical(&self.master)
+    }
+
+    /// Monotonic counter incremented whenever output from the child is
+    /// interpreted (even while the pane is not being drawn).
+    pub fn output_counter(&self) -> u32 {
+        self.inner.output_counter()
+    }
+
     pub fn child_pid(&self) -> u32 {
         self.pid as u32
     }
